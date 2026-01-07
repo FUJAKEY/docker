@@ -1,11 +1,10 @@
-# Используем стабильную версию с XFCE
+# Используем стабильную версию
 FROM accetto/ubuntu-vnc-xfce-g3:latest
 
-# Переходим в режим суперпользователя для настройки
+# Переключаемся на root (и останемся на нем для старта сервисов)
 USER 0
 
-# 1. Устанавливаем SSH, Sudo и Curl
-# 2. Чистим кэш
+# Устанавливаем SSH, sudo и прочее
 RUN apt-get update && \
     apt-get install -y \
         openssh-server \
@@ -20,33 +19,32 @@ RUN apt-get update && \
 
 # === НАСТРОЙКА SSH ===
 RUN mkdir /var/run/sshd
-# Разрешаем вход root по SSH
+# Разрешаем вход root
 RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
-# Отключаем строгую проверку (опционально, для удобства в тестах)
-RUN sed -i 's/StrictModes yes/StrictModes no/' /etc/ssh/sshd_config
 
-# === НАСТРОЙКА ПАРОЛЕЙ И SUDO ===
-# Задаем пароль root:root
+# === НАСТРОЙКА ПАРОЛЕЙ ===
+# Пароль root
 RUN echo 'root:root' | chpasswd
 
-# Пользователь внутри контейнера называется 'headless'. 
-# Мы даем ему тот же пароль 'root' и добавляем в группу sudo.
+# Пароль пользователя headless (для VNC) и добавление его в sudo
 RUN echo 'headless:root' | chpasswd && usermod -aG sudo headless
 
 # === СКРИПТ ЗАПУСКА ===
-# Нам нужно запустить И ssh, И рабочий стол. Создаем скрипт запуска.
+# 1. Запускаем SSH (от root)
+# 2. Запускаем VNC (переключаясь на пользователя headless, так безопаснее для GUI)
+# Обрати внимание: путь исправлен на /docker-startup/startup.sh
 RUN echo '#!/bin/bash\n\
 service ssh start\n\
 echo "SSH started on port 22"\n\
-# Запускаем оригинальный скрипт VNC\n\
-/docker-startup/vnc_startup.sh --wait\n\
+# Передаем управление скрипту VNC от имени пользователя headless\n\
+su headless -c "/docker-startup/startup.sh --wait"\n\
 ' > /start_custom.sh && chmod +x /start_custom.sh
 
-# Настраиваем переменные VNC
+# Пароль для VNC (браузер)
 ENV VNC_PW=mypassword
 
-# Открываем порты: 6901 (Web VNC), 5901 (VNC Client), 22 (SSH)
+# Открываем порты
 EXPOSE 6901 5901 22
 
-# Запускаем наш кастомный скрипт
+# Запускаем кастомный скрипт
 ENTRYPOINT ["/start_custom.sh"]
