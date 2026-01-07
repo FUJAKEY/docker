@@ -1,37 +1,31 @@
-# Используем базу LinuxServer Webtop (Ubuntu + XFCE + KasmVNC)
-# Тег ubuntu-xfce сейчас базируется на Ubuntu Noble (24.04 LTS)
-FROM lscr.io/linuxserver/webtop:ubuntu-xfce
+# Используем базу Ubuntu 24.04 (Noble) с настроенным VNC и noVNC
+FROM accetto/ubuntu-vnc-xfce-g3:noble
 
-# Добавляем информацию о владельце (опционально)
-LABEL maintainer="David"
+# Переключаемся на root для установки программ
+USER 0
 
-# Переключаемся на root для установки обновлений
-USER root
-
-# 1. Обновляем списки пакетов
-# 2. Делаем полный апгрейд системы (dist-upgrade) чтобы получить новейшие версии ПО
-# 3. Устанавливаем базовые полезные утилиты (git, curl, python3 и т.д.)
-# 4. Чистим кэш, чтобы образ весил меньше
+# Обновляем систему до последних версий и ставим нужный софт
+# Сюда можно дописать любые программы, которые тебе нужны (например, firefox, python3)
 RUN apt-get update && \
-    apt-get dist-upgrade -y && \
     apt-get install -y \
-    curl \
-    wget \
-    git \
-    nano \
-    python3 \
-    python3-pip \
-    htop \
+        wget \
+        curl \
+        git \
+        nano \
+        python3 \
+        python3-pip \
+        htop \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Указываем переменные окружения по умолчанию (можно переопределить при запуске)
-ENV PUID=1000
-ENV PGID=1000
-ENV TZ=Asia/Jerusalem
+# (Опционально) Устанавливаем пароль VNC по умолчанию
+# Если не хочешь хардкодить пароль, удали эту строку и передавай его при запуске
+ENV VNC_PW=mypassword
 
-# Открываем порт 3000 для веб-доступа (KasmVNC)
-EXPOSE 3000
+# Возвращаемся к пользователю по умолчанию (headless) для безопасности
+USER 1001
 
-# Volume для сохранения данных пользователя (чтобы файлы не пропадали)
-VOLUME /config
+# Открываем порты:
+# 6901 - для входа через браузер (noVNC)
+# 5901 - для обычного VNC клиента
+EXPOSE 6901 5901
