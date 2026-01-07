@@ -4,7 +4,7 @@ FROM accetto/ubuntu-vnc-xfce-g3:latest
 # Переключаемся на root
 USER 0
 
-# Устанавливаем SSH, sudo и прочее
+# Устанавливаем SSH, sudo и инструменты
 RUN apt-get update && \
     apt-get install -y \
         openssh-server \
@@ -24,27 +24,21 @@ RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/
 # === НАСТРОЙКА ПАРОЛЕЙ ===
 # Пароль root:root
 RUN echo 'root:root' | chpasswd
-# Пароль headless:root (для sudo внутри VNC)
+# Пароль пользователя headless:root (чтобы работал sudo внутри VNC)
 RUN echo 'headless:root' | chpasswd && usermod -aG sudo headless
 
-# === УМНЫЙ СКРИПТ ЗАПУСКА ===
-# Мы используем переменную $STARTUPDIR, чтобы точно найти путь
+# === ИСПРАВЛЕННЫЙ СКРИПТ ЗАПУСКА ===
+# Мы увидели в логах, что файл называется startup.sh
 RUN echo '#!/bin/bash\n\
 service ssh start\n\
 echo "SSH started on port 22"\n\
 \n\
-# Проверяем, где лежит скрипт запуска и запускаем его от юзера headless\n\
-if [ -f "$STARTUPDIR/vnc_startup.sh" ]; then\n\
-    su headless -c "$STARTUPDIR/vnc_startup.sh --wait"\n\
-elif [ -f "/dockerstartup/vnc_startup.sh" ]; then\n\
-    su headless -c "/dockerstartup/vnc_startup.sh --wait"\n\
-else\n\
-    echo "Error: Startup script not found! Listing dirs:"\n\
-    ls -R /dockerstartup\n\
-fi\n\
+echo "Starting VNC..."\n\
+# Запускаем правильный скрипт от имени пользователя headless\n\
+su headless -c "/dockerstartup/startup.sh --wait"\n\
 ' > /start_custom.sh && chmod +x /start_custom.sh
 
-# Пароль для VNC
+# Пароль для VNC (браузер)
 ENV VNC_PW=mypassword
 
 # Открываем порты
