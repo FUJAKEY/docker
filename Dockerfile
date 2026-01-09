@@ -62,6 +62,6 @@ su headless -c "/dockerstartup/startup.sh --wait"\n\
 # Пароль VNC
 ENV VNC_PW=mypassword
 
-EXPOSE 6901 5901 22
+EXPOSE 5901
 
 ENTRYPOINT ["/start_custom.sh"]
