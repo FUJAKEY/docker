@@ -1,4 +1,4 @@
-FROM dockur/windows
+FROM dockur/windows:latest
 
 # Настройки для Windows 10 (она легче, чем 11)
 ENV VERSION="win10"
